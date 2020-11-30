@@ -1,0 +1,139 @@
+<!DOCTYPE HTML><html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link rel="icon" href="data:,">
+  <title>ESP32 (LoRa + Server)</title>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
+    header {
+      margin: 0;
+      padding-top: 5vh;
+      padding-bottom: 5vh;
+      overflow: hidden;
+      background-image: url(winter);
+      background-size: cover;
+      color: white;
+    }
+    h2 {
+      font-size: 2.0rem;
+    }
+    p { font-size: 1.2rem; }
+    .units { font-size: 1.2rem; }
+    .readings { font-size: 2.0rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>ESP32 (LoRa + Server)</h2>
+    <p>LoRa RSSI: <span id="rssi">%RSSI%</span></p>
+    <p>LoRa SNR : <span id="snr">%SNR%</span></p>
+  </header>
+<main>
+
+  <p>
+    <i class="fas fa-address-card" style="color:#059e8a;"></i> Packet Id: <span id="packetid" class="readings">%PACKETID%</span>
+  </p>
+  <p>
+    <i class="fas fa-location-arrow" style="color:#059e8a;"></i> Longitude: <span id="latitude" class="readings">%LATITUDE%</span>
+
+  </p>
+  <p>
+    <i class="fas fa-location-arrow" style="color:#00add6;"></i> Latitude: <span id="longitude" class="readings">%LONGITUDE%</span>
+
+  </p>
+
+  <p>
+    <i class="fas fa-ruler" style="color:#059e8a;"></i> Distance: <span id="distance" class="readings">%DISTANCE%</span> <sup>(Mi)</sup>
+  </p>
+
+  <p>
+    <i class="far fa-calendar-alt" style="color:#00add6;"></i> Date: <span id="date" class="readings">%DATE%</span>
+  </p>
+  <p>
+    <i class="far fa-clock" style="color:#00add6;"></i> Time: <span id="time" class="readings">%TIME%</span>
+  </p>
+
+
+
+</main>
+
+
+
+<script>
+var data;
+var commaSeperated;
+setInterval(updateValues, 500, "packetdata");
+
+
+//window.alert(distance(34.0570362,-118.30973,32.737727,-117.171723 ,'N'));
+ // Plotly.extendTraces('graph', {
+  //  y: [[parseFloat(toFloat(commaSeperated[1]))], [toFloat(commaSeperated[2])]
+ // }, [0, 1])
+function updateValues(value) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      data= this.responseText;
+      //document.getElementById(value).innerHTML = data;
+      commaSeperated = data.split(",");
+      document.getElementById("packetid").innerHTML =commaSeperated[0] ;
+      document.getElementById("rssi").innerHTML =commaSeperated[1] ;
+      document.getElementById("snr").innerHTML =commaSeperated[2] ;
+      document.getElementById("latitude").innerHTML =commaSeperated[3] ;
+      document.getElementById("longitude").innerHTML = commaSeperated[4];
+      document.getElementById("date").innerHTML = commaSeperated[5];
+      document.getElementById("time").innerHTML = commaSeperated[6];
+      document.getElementById('distance').innerHTML = distance(34.0570362,-118.30973,commaSeperated[3],commaSeperated[4],'N').toFixed(2);
+      //document.getElementById('distance').innerHTML = String(distance(34.0570362,-118.30973,32.737727,-117.171723 ,'N'));
+    }
+  };
+  xhttp.open("GET", "/" + value, true);
+  xhttp.send();
+}
+
+function distance(lat1, lon1, lat2, lon2, unit) {
+    // distance between two points on a sphere as the crow flies 
+    var radlat1 = Math.PI * lat1/180
+    var radlat2 = Math.PI * lat2/180
+    var theta = lon1-lon2
+    var radtheta = Math.PI * theta/180
+    var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+    dist = Math.acos(dist)
+    dist = dist * 180/Math.PI
+    dist = dist * 60 * 1.1515
+    if (unit=="K") { dist = dist * 1.609344 }
+    if (unit=="N") { dist = dist * 0.8684 }
+    return dist
+}
+
+
+
+
+//<a href="javascript:distance(34.0570362,-118.30973,34.1680172,-118.6316835,'N')">click me</a>
+//<button onclick="window.alert(distance(34.0570362,-118.30973,34.1680172,-118.6316835,'N'))">Print this page</button>
+
+</script>
+
+
+
+  <div id="graph"></div>
+  <script>
+    function rand() {
+      return Math.random();
+    }
+
+    Plotly.plot('graph', [{
+      y: [0,8,2].map(rand)
+    }, {
+      y: [4,2,9].map(rand)
+    }]);
+  </script>
+</body>
+</html>

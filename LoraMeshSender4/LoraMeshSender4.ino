@@ -29,7 +29,7 @@ SoftwareSerial GPS;
 #define LO_BATT_SLEEP_TIME      10*60*1000*1000     // How long when low batt to stay in sleep (us)
 #define HELTEC_V2_1             1       // Set this to switch between GPIO13(V2.0) and GPIO37(V2.1) for VBatt ADC.
 #define VBATT_GPIO              21      // Heltec GPIO to toggle VBatt read connection ... WARNING!!! This also connects VEXT to VCC=3.3v so be careful what is on header.  Also, take care NOT to have ADC read connection in OPEN DRAIN when GPIO goes HIGH
-#define __DEBUG                 1       // DEBUG Serial output
+#define __DEBUG                 0       // DEBUG Serial output
 
 esp_adc_cal_characteristics_t *adc_chars;
 
@@ -172,7 +172,7 @@ static void smartDelay(unsigned long ms)
 
 // Poll the proper ADC for VBatt on Heltec Lora 32 with GPIO21 toggled
 uint16_t ReadVBatt() {
-  uint16_t reading = 666;
+  uint16_t reading = 0;
   digitalWrite(VBATT_GPIO, LOW);              // ESP32 Lora v2.1 reads on GPIO37 when GPIO21 is low
   delay(ADC_READ_STABILIZE);                  // let GPIO stabilize
   #if (defined(HELTEC_V2_1))
@@ -220,31 +220,59 @@ uint16_t Sample() {
 }
 
 
+String drawBattery(uint16_t voltage, bool sleep) {
+  Heltec.display->setColor(BLACK);
+  Heltec.display->fillRect(99,0,29,24);
 
+  Heltec.display->setColor(WHITE);
+  Heltec.display->drawRect(104,0,12,6);
+  Heltec.display->fillRect(116,2,1,2);
 
-
-
-void drawBattery(uint16_t voltage, bool sleep) {
   uint16_t v = voltage;
   if (v < MINBATT) {v = MINBATT;}
   if (v > MAXBATT) {v = MAXBATT;}
   double pct = map(v,MINBATT,MAXBATT,0,100);
   uint8_t bars = round(pct / 10.0);
- 
+  Heltec.display->fillRect(105,1,bars,4);
+  Heltec.display->setFont(ArialMT_Plain_10);
+  Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+  // Draw small "z" when using sleep
+  if (sleep > 0) {
+    Heltec.display->drawHorizontalLine(121,0,4);
+    Heltec.display->drawHorizontalLine(121,5,4);
+    Heltec.display->setPixel(124,1);
+    Heltec.display->setPixel(123,2);
+    Heltec.display->setPixel(122,3);
+    Heltec.display->setPixel(121,4);
+  }
+  Heltec.display->drawString(127,5,String((int)round(pct))+"%");
+  Heltec.display->drawString(127,14,String(round(voltage/10.0)/100.0)+"V");
+
+  Heltec.display->drawString(127, 25, "MsgId #: "+String(msgCount));
+  //Heltec.display->drawString(127, 50, String(checksum));
+
   #if defined(__DEBUG) && __DEBUG > 0
   static uint8_t c = 0;
   if ((c++ % 10) == 0) {
     c = 1;
-    //Serial.printf("VBAT: %dmV [%4.1f%%] %d bars\n", voltage, pct, bars);
+    Serial.printf("VBAT: %dmV [%4.1f%%] %d bars\n", voltage, pct, bars);
   }
   #endif
-  //return String(round(voltage/10.0)/100.0)+"V";
-  Serial.printf("VBAT: %dmV [%4.1f%%] %d bars\n", voltage, pct, bars);
-  //return String((int)round(pct))+"%";
+
+  return String((int)round(pct))+"%";
 }
+
+
+//=================================================================================================
+//
+//=================================================================================================
 
 void setup() {
 
+  aes_init();
+  aesLib.set_paddingmode(paddingMode::Array);
+
+//-------------------------------------------------------------------- 
   // Characterize ADC at particular atten
   #if (defined(HELTEC_V2_1))
   adc_chars = (esp_adc_cal_characteristics_t*)calloc(1, sizeof(esp_adc_cal_characteristics_t));
@@ -258,13 +286,6 @@ void setup() {
   adc2_config_channel_atten(ADC2_CHANNEL_4,ADC_ATTEN_DB_6);
   #endif
 
-  
-
-  aes_init();
-  aesLib.set_paddingmode(paddingMode::Array);
-
-//--------------------------------------------------------------------
-  
   #if defined(__DEBUG) && __DEBUG > 0
   Serial.printf("ADC Calibration: ");
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
@@ -278,7 +299,6 @@ void setup() {
   if (val_type);    // Suppress warning
   #endif
 
-  
   #if defined(__DEBUG) && __DEBUG >= 1
   Serial.printf("ADC Calibration: ");
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
@@ -301,28 +321,41 @@ void setup() {
   digitalWrite(VBATT_GPIO, LOW);              // ESP32 Lora v2.1 reads on GPIO37 when GPIO21 is low
   delay(ADC_READ_STABILIZE);                  // let GPIO stabilize
 
-//---------------------------------------------------------------------
-  
+//--------------------------------------------------------------------- 
   Heltec.begin(true /*DisplayEnable Enable*/, true /*Heltec.LoRa Disable*/, true /*Serial Enable*/, true /*PABOOST Enable*/, BAND /*long BAND*/);
   Heltec.display->init();
   Heltec.display->flipScreenVertically();  
   Heltec.display->setFont(ArialMT_Plain_10);
   Heltec.display->clear();
-  //GPS.begin(9600);
+
+//---------------------------------------------------------------------
   GPS.begin(9600, SWSERIAL_8N1, 23, 19, false, 1024);
 }
 
+//=================================================================================================
+//   Main Loop
+//=================================================================================================
+
 void loop() {
-
-
-
+  //smartDelay(2000);
+  //sendPacket(getGPSInfo()+ ",90");
+  Heltec.display->clear();
   uint16_t voltage = Sample();
-  drawBattery(voltage, voltage < LIGHT_SLEEP_VOLTAGE);
+  String battInfo = drawBattery(voltage, voltage < LIGHT_SLEEP_VOLTAGE);
+  Heltec.display->display();
+
+  smartDelay(2000);
+  sendPacket(getGPSInfo()+ "," + battInfo);
 
   if (voltage < MINBATT) {                  // Low Voltage cut off shut down to protect battery as long as possible
+    Heltec.display->setColor(WHITE);
+    Heltec.display->setFont(ArialMT_Plain_10);
+    Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+    Heltec.display->drawString(64,24,"Shutdown!!");
+    Heltec.display->display();
     delay(2000);
     #if defined(__DEBUG) && __DEBUG > 0
-    Serial.printf(" !! Shutting down...low battery voltage: %dmV.\n", voltage);
+    Serial.printf(" !! Shutting down...low battery volotage: %dmV.\n",voltage);
     delay(10);
     #endif
     esp_sleep_enable_timer_wakeup(LO_BATT_SLEEP_TIME);
@@ -330,7 +363,7 @@ void loop() {
   } else if (voltage < LIGHT_SLEEP_VOLTAGE) {     // Use light sleep once on battery
     uint64_t s = VBATT_SAMPLE;
     #if defined(__DEBUG) && __DEBUG > 0
-    Serial.printf(" - Light Sleep (%dms)...battery voltage: %dmV.\n",(int)s,voltage);
+    Serial.printf(" - Light Sleep (%dms)...battery volotage: %dmV.\n",(int)s,voltage);
     delay(20);
     #endif
     esp_sleep_enable_timer_wakeup(s*1000);     // Light Sleep does not flush buffer
@@ -338,16 +371,4 @@ void loop() {
   }
   delay(ADC_READ_STABILIZE);
 
-  smartDelay(2000);
-  sendPacket(getGPSInfo()+ ",90");
-  
-  Heltec.display->clear();
-  Heltec.display->drawString(0, 0, "Msg Id #: ");
-  Heltec.display->drawString(0, 10, String(msgCount));
-  Heltec.display->drawString(0, 20, String(checksum));
-  Heltec.display->display();
-
-
-  
- 
 }

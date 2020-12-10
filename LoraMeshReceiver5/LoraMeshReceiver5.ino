@@ -49,8 +49,12 @@ char ciphertext[512];
 //const char* ssid     = "the rumi";  
 //const char* password = "ruminight";
 
-const char* ssid     = "NETGEAR53";
-const char* password = "helpfulbreeze882";
+//const char* ssid     = "NETGEAR53";
+//const char* password = "helpfulbreeze882";
+
+const char* ssid     = "iPhone";
+const char* password = "Qwerty123456";
+
 
 
 // AES Encryption Key

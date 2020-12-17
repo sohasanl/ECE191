@@ -39,32 +39,6 @@
     .readings { font-size: 2.0rem; }
   </style>
 
-   <script>
-      // This example creates a 2-pixel-wide red polyline showing the path of
-      // the first trans-Pacific flight between Oakland, CA, and Brisbane,
-      // Australia which was made by Charles Kingsford Smith.
-      function initMap() {
-        const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 3,
-          center: { lat: 0, lng: -180 },
-          mapTypeId: "terrain",
-        });
-        const flightPlanCoordinates = [
-          { lat: 37.772, lng: -122.214 },
-          { lat: 21.291, lng: -157.821 },
-          { lat: -18.142, lng: 178.431 },
-          { lat: -27.467, lng: 153.027 },
-        ];
-        const flightPath = new google.maps.Polyline({
-          path: flightPlanCoordinates,
-          geodesic: true,
-          strokeColor: "#FF0000",
-          strokeOpacity: 1.0,
-          strokeWeight: 2,
-        });
-        flightPath.setMap(map);
-      }
-    </script>
 
 
 
@@ -82,7 +56,7 @@
   </p>
 
   <p>
-    <i class="fas fa-address-card" style="color:#059e8a;"></i> # of Corrupted : <span id="corrupted" class="readings">%CORRUPTED%</span>
+    <i class="fas fa-house-damage" style="color:#FF5733;"></i> Corrupted : <span id="corrupted" class="readings">%CORRUPTED%</span>
   </p>
   <p>
     <i class="fas fa-location-arrow" style="color:#059e8a;"></i> Longitude: <span id="latitude" class="readings">%LATITUDE%</span>
@@ -104,9 +78,8 @@
     <i class="far fa-clock" style="color:#00add6;"></i> Time: <span id="time" class="readings">%TIME%</span>
   </p>
   <p>
-    <i class="far fa-clock" style="color:#00add6;"></i> Battery Level: <span id="battery" class="readings">%BATTERY%</span>
+    <i class="fas fa-battery-full" style="color:#00add9;"></i> Battery Level: <span id="battery" class="readings">%BATTERY%</span>
   </p>
-
 
 
 </main>
@@ -119,18 +92,33 @@ var commaSeperated;
 setInterval(updateValues, 500, "packetdata");
 setInterval(function(){
     Plotly.extendTraces('glstpacket', {
-    y:[[commaSeperated[1]]]} ,[0])
+    y:[[commaSeperated[1]]],
+    x:[[haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4)]]} ,[0])
 
 
     Plotly.extendTraces('grssi', {
-    y:[[commaSeperated[2]]]} ,[0])
+    y:[[commaSeperated[2]]],
+    x:[[haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4)]]} ,[0])
 
     Plotly.extendTraces('gnsr', {
-    y:[[commaSeperated[3]]]} ,[0])
+    y:[[commaSeperated[3]]],
+    x:[[haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4)]]} ,[0])
+
+
+
+    Plotly.extendTraces('glstpackett', {
+     y:[[commaSeperated[1]]] } ,[0])
+
+
+    Plotly.extendTraces('grssit', {
+    y:[[commaSeperated[2]]] } ,[0])
+
+    Plotly.extendTraces('gnsrt', {
+    y:[[commaSeperated[3]]] } ,[0])
 
 
     Plotly.extendTraces('gdistance', {
-    y:[[haversineDistance(34.0570362,-118.30973,commaSeperated[4],commaSeperated[5],true).toFixed(4)]]} ,[0])
+    y:[[haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4)]]} ,[0])
 
   },500)
 
@@ -160,9 +148,10 @@ function updateValues(value) {
         document.getElementById("longitude").innerHTML = commaSeperated[5];
         document.getElementById("date").innerHTML = commaSeperated[6];
         document.getElementById("time").innerHTML = commaSeperated[7];
-        document.getElementById("battery").innerHTML = commaSeperated[8];
-        document.getElementById('distance').innerHTML = haversineDistance(34.0570362,-118.30973,commaSeperated[4],commaSeperated[5],true).toFixed(4);
+        document.getElementById("battery").innerHTML = commaSeperated[8].substring(0, 3);;
+        document.getElementById('distance').innerHTML = haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4);
       }
+       document.getElementById('distance').innerHTML = haversineDistance(32.737791,-117.171400,commaSeperated[4],commaSeperated[5],true).toFixed(4);
 
     }
 
@@ -214,12 +203,53 @@ function updateValues(value) {
 </script>
 
 
-
+  <h2>Lost Packet vs Distance Plot</h2>
   <div id="glstpacket" class='center'></div>
+  <h2>RSSI vs Distance Plot</h2>
   <div id="grssi" class='center'></div>
+  <h2>SNR vs Distance Plot</h2>
   <div id="gnsr" class='center'></div>
+
+  <h2>Lost Packet vs Time Plot</h2>
+  <div id="glstpackett" class='center'></div>
+  <h2>RSSI vs Time Plot</h2>
+  <div id="grssit" class='center'></div>
+  <h2>SNR vs Time Plot</h2>
+  <div id="gnsrt" class='center'></div>
+
+
+
+  <h2>Distance Plot</h2>
   <div id="gdistance" class='center'></div>
+  <h2>Coordinates Plot</h2>
   <div id="map" class='center'></div>
+
+  <script>
+      // This example creates a 2-pixel-wide red polyline showing the path of
+      // the first trans-Pacific flight between Oakland, CA, and Brisbane,
+      // Australia which was made by Charles Kingsford Smith.
+      function initMap() {
+        const map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 3,
+          center: { lat: 0, lng: -180 },
+          mapTypeId: "terrain",
+        });
+        const flightPlanCoordinates = [
+          { lat: 37.772, lng: -122.214 },
+          { lat: 21.291, lng: -157.821 },
+          { lat: -18.142, lng: 178.431 },
+          { lat: -27.467, lng: 153.027 },
+        ];
+        const flightPath = new google.maps.Polyline({
+          path: flightPlanCoordinates,
+          geodesic: true,
+          strokeColor: "#FF0000",
+          strokeOpacity: 1.0,
+          strokeWeight: 2,
+        });
+        flightPath.setMap(map);
+      }
+    </script>
 
 
 
@@ -230,11 +260,19 @@ function updateValues(value) {
     }
 
     Plotly.plot('glstpacket', [{
-      y: [].map(rand) }]);
+      y: [].map(rand), x: [].map(rand)}]);
     Plotly.plot('grssi', [{
-      y: [].map(rand) }]);
+      y: [].map(rand), x: [].map(rand)}]);
     Plotly.plot('gnsr', [{
+      y: [].map(rand), x: [].map(rand)}]);
+
+    Plotly.plot('glstpackett', [{
       y: [].map(rand) }]);
+    Plotly.plot('grssit', [{
+      y: [].map(rand) }]);
+    Plotly.plot('gnsrt', [{
+      y: [].map(rand) }]);
+
     Plotly.plot('gdistance', [{
       y: [].map(rand) }]);
 
